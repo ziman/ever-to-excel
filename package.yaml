@@ -9,6 +9,31 @@ description:         Lua to spreadsheet compiler
 
 dependencies:
 - base >= 4.7 && < 5
+- language-lua
+- text
+
+default-extensions:
+- LambdaCase
+- OverloadedStrings
+- TypeApplications
+- TypeOperators
+- ScopedTypeVariables
+- DeriveGeneric
+- DeriveAnyClass
+- DataKinds
+- DerivingStrategies
+- GeneralizedNewtypeDeriving
+- ViewPatterns
+- Strict
+- FlexibleInstances
+- FlexibleContexts
+- GADTs
+- TypeFamilies
+- NamedFieldPuns
+- RankNTypes
+- MultiParamTypeClasses
+- RecordWildCards
+- MultiWayIf
 
 source-dirs: src
 
@@ -16,6 +41,9 @@ ghc-options:
 - -threaded
 - -rtsopts
 - -with-rtsopts=-N
+- -Wall
+- -Wextra
+- -Werror
 
 executables:
   lua-xls:
