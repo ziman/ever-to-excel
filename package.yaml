@@ -1,0 +1,22 @@
+name:                lua-xls
+version:             0.1.0.0
+github:              "ziman/lua-xls"
+license:             BSD3
+author:              "Matus Tejiscak"
+maintainer:          "ziman@functor.sk"
+copyright:           "2020 Matus Tejiscak"
+description:         Lua to spreadsheet compiler
+
+dependencies:
+- base >= 4.7 && < 5
+
+source-dirs: src
+
+ghc-options:
+- -threaded
+- -rtsopts
+- -with-rtsopts=-N
+
+executables:
+  lua-xls:
+    main: Main.hs

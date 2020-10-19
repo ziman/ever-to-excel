@@ -1,0 +1,4 @@
+.stack-work/
+*~
+lua-xls.cabal
+stack.yaml.lock
