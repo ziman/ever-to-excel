@@ -1,10 +1,9 @@
 module Main where
 
-import Data.Char
 import Data.SCargot
-import qualified Text.Parsec as Parsec
 import qualified Data.Text.IO as Text
 
+import Parser
 import SCompile
 
 main :: IO ()
@@ -17,8 +16,7 @@ main = do
         Left err -> error err
         Right code -> print code
   where
-    parser = asRich $ mkParser (Parsec.many1 $ Parsec.satisfy isAtom)
-    isAtom c = not (isSpace c) && (c `notElem` "()[]{}.")
+    parser = asRich $ mkParser $ parseAtom
 
 -- SExpr (+ 1 2)
 --

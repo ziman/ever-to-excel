@@ -23,6 +23,7 @@ source-repository head
 executable scheme-xls
   main-is: Main.hs
   other-modules:
+      Parser
       SCompile
       SLang
       Paths_scheme_xls

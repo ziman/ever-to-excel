@@ -9,6 +9,7 @@ import Control.Monad.Trans.Class
 import Control.Monad.Trans.Except
 import Control.Monad.Trans.RWS.CPS
 
+import Parser
 import SLang
 
 data State = State
@@ -50,15 +51,15 @@ free n = do
     then throw "stack underflow"
     else put st{ stStackSize = stStackSize st - n }
 
-compileExpr :: RichSExpr String -> CG ()
+compileExpr :: RichSExpr Atom -> CG ()
 
-compileExpr (RSList [RSAtom "display", xe]) = do
+compileExpr (RSList [RSAtom (Symbol "display"), xe]) = do
   compileExpr xe
   xaddr <- top 0
   emit $ MOV output xaddr
   -- returns the printed value
 
-compileExpr (RSList [RSAtom "+", xe, ye]) = do
+compileExpr (RSList [RSAtom (Symbol "+"), xe, ye]) = do
   compileExpr xe
   compileExpr ye
   xaddr <- top 1
@@ -68,7 +69,7 @@ compileExpr (RSList [RSAtom "+", xe, ye]) = do
 
 compileExpr e = throw $ "can't compile: " ++ show e
 
-compile :: [RichSExpr String] -> Either String SCode
+compile :: [RichSExpr Atom] -> Either String SCode
 compile es =
   case
     runIdentity $
