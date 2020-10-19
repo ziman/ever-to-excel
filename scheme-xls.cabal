@@ -37,4 +37,5 @@ executable scheme-xls
     , parsec
     , s-cargot
     , text
+    , transformers
   default-language: Haskell2010
