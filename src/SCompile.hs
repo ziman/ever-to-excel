@@ -5,4 +5,4 @@ import Data.SCargot.Repr
 import SLang
 
 compile :: [RichSExpr String] -> Either String SCode
-compile exprs = undefined
+compile _exprs = Left "not implemented"

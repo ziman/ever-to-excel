@@ -23,6 +23,8 @@ source-repository head
 executable scheme-xls
   main-is: Main.hs
   other-modules:
+      SCompile
+      SLang
       Paths_scheme_xls
   hs-source-dirs:
       src
