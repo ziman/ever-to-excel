@@ -11,9 +11,11 @@ import Control.Monad.Trans.RWS.CPS
 
 import SLang
 
-type Env = [String]  -- names of variables
+data State = State
+  { stStackSize :: Int
+  }
 
-type CG = RWST Env SCode () (Except String)
+type CG = RWST () SCode State (Except String)
 
 {-
 lookup :: String -> Env -> Either String Addr
@@ -26,11 +28,44 @@ lookup var (x:xs)
 throw :: String -> CG a
 throw = lift . throwE
 
-compileExpr :: RichSExpr String -> CG ()
+emit :: SInstr -> CG ()
+emit instr = tell [instr]
+
+top :: Int -> CG Addr
+top i = do
+  st <- get
+  return (Addr $ stStackSize st - i)
+
 {-
-compileExpr (RSList [RSAtom "display", rhs]) = do
-  l <- 
+alloc :: Int -> CG ()
+alloc n = do
+  st <- get
+  put st{ stStackSize = stStackSize st + n }
 -}
+
+free :: Int -> CG ()
+free n = do
+  st <- get
+  if stStackSize st < n
+    then throw "stack underflow"
+    else put st{ stStackSize = stStackSize st - n }
+
+compileExpr :: RichSExpr String -> CG ()
+
+compileExpr (RSList [RSAtom "display", xe]) = do
+  compileExpr xe
+  xaddr <- top 0
+  emit $ MOV output xaddr
+  -- returns the printed value
+
+compileExpr (RSList [RSAtom "+", xe, ye]) = do
+  compileExpr xe
+  compileExpr ye
+  xaddr <- top 1
+  yaddr <- top 0
+  emit $ BIN ADD xaddr xaddr yaddr
+  free 1
+
 compileExpr e = throw $ "can't compile: " ++ show e
 
 compile :: [RichSExpr String] -> Either String SCode
@@ -38,7 +73,7 @@ compile es =
   case
     runIdentity $
       runExceptT $
-        evalRWST (traverse_ compileExpr es) [] ()
+        evalRWST (traverse_ compileExpr es) () State{stStackSize=0}
     of
       Left err -> Left err
       Right ((), code)-> Right code

@@ -21,3 +21,6 @@ data SInstr
   deriving (Eq, Ord, Show)
 
 type SCode = [SInstr]
+
+output :: Addr
+output = Addr 0
