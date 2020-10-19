@@ -1,20 +1,22 @@
-name:                lua-xls
+name:                scheme-xls
 version:             0.1.0.0
-github:              "ziman/lua-xls"
+github:              "ziman/scheme-xls"
 license:             BSD3
 author:              "Matus Tejiscak"
 maintainer:          "ziman@functor.sk"
 copyright:           "2020 Matus Tejiscak"
-description:         Lua to spreadsheet compiler
+description:         Scheme to spreadsheet compiler
 
 dependencies:
 - base >= 4.7 && < 5
-- language-lua
+- s-cargot
+- optparse-applicative
+- containers
 - text
+- parsec
 
 default-extensions:
 - LambdaCase
-- OverloadedStrings
 - TypeApplications
 - TypeOperators
 - ScopedTypeVariables
@@ -34,6 +36,7 @@ default-extensions:
 - MultiParamTypeClasses
 - RecordWildCards
 - MultiWayIf
+#- OverloadedStrings
 
 source-dirs: src
 
@@ -46,5 +49,5 @@ ghc-options:
 - -Werror
 
 executables:
-  lua-xls:
+  scheme-xls:
     main: Main.hs
