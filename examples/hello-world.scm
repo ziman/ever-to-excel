@@ -1,3 +1,2 @@
-(let
-  (x 3)
-  (display (+ x 1)))
+(define (main)
+  (display (+ 1 2)))

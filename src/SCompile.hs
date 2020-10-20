@@ -2,15 +2,13 @@ module SCompile (compile) where
 
 import Prelude hiding (lookup)
 import Data.Foldable
-import Data.Functor.Identity
-import Data.SCargot.Repr
 
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Except
 import Control.Monad.Trans.RWS.CPS
 
-import Parser
-import SLang
+import AST
+import Bytecode
 
 data State = State
 
@@ -18,12 +16,12 @@ data Env = Env
   { envScope :: [[String]]  -- activation frames
   }
 
-type CG = RWST Env SCode State (Except String)
+type CG = RWST Env (Code String) State (Except String)
 
 throw :: String -> CG a
 throw = lift . throwE
 
-emit :: SInstr -> CG ()
+emit :: Instr String -> CG ()
 emit instr = tell [instr]
 
 {-
@@ -37,42 +35,46 @@ top i = do
   emit $ BIN SUB
 -}
 
-compileExpr :: RichSExpr Atom -> CG ()
+compileExpr :: Expr -> CG ()
 
-compileExpr (RSAtom (Number i)) = do
+compileExpr (Num i) = do
   emit $ PUSHI i
 
-compileExpr (RSList (RSAtom (Symbol f) : args)) =
-  compileForm f args
+compileExpr (Str s) = do
+  emit $ PUSHS s
 
-compileExpr e = throw $ "can't compile: " ++ show e
-
-compileForm :: String -> [RichSExpr Atom] -> CG ()
-
-compileForm "display" [xe] = do
+compileExpr (Form "display" [xe]) = do
   compileExpr xe
   emit $ PRINT
   -- returns the printed value
 
-compileForm "+" [xe, ye] = do
+compileExpr (Form "+" [xe, ye]) = do
   compileExpr xe
   compileExpr ye
   emit $ BIN ADD
 
-compileForm f _args = do
+compileExpr (Form f _args) = do
   throw $ "unknown form: " ++ show f
 
-compile :: [RichSExpr Atom] -> Either String SCode
-compile es =
-  case
-    runIdentity $
-      runExceptT $
-        evalRWST (traverse_ compileExpr es) initialEnv initialState
-    of
-      Left err -> Left err
-      Right ((), code) -> Right code
+runCG :: Env -> State -> CG () -> Either String (Code String)
+runCG env st cg =
+  fmap snd $
+    runExcept $
+      evalRWST cg env st
+
+compileDef :: Def -> CG ()
+compileDef def = do
+  emit $ LABEL (defName def)
+  compileExpr (defBody def)
+  emit $ RET
+
+compile :: [Def] -> Either String (Code String)
+compile defs =
+    runCG env st $ do
+      traverse_ compileDef defs
+      emit $ CALL "main"
   where
-    initialState = State
-    initialEnv = Env
+    st = State
+    env = Env
       { envScope = []
       }

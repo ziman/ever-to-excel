@@ -1,4 +1,4 @@
-module SLang where
+module Bytecode where
 
 newtype Addr = Addr Int
   deriving (Eq, Ord, Show)
@@ -10,16 +10,19 @@ data Bin
   | DIV
   deriving (Eq, Ord, Show)
 
-data SInstr
+data Instr lbl
   = LOAD Addr
   | STORE Addr
   | BIN Bin
   | PUSHS String
   | PUSHI Int
   | PRINT
+  | LABEL lbl
+  | CALL lbl
+  | RET
   deriving (Eq, Ord, Show)
 
-type SCode = [SInstr]
+type Code lbl = [Instr lbl]
 
 addrOUT :: Addr
 addrOUT = Addr 0

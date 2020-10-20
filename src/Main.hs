@@ -1,20 +1,23 @@
 module Main where
 
+import Control.Monad
 import Data.SCargot
 import qualified Data.Text.IO as Text
 
 import Parser
+import AST
 import SCompile
 
 main :: IO ()
 main = do
   input <- Text.getContents
-  case decode parser input of
+  let pipeline =
+        decode parser
+        >=> traverse astDef
+        >=> compile
+  case pipeline input of
     Left err -> error err
-    Right sexprs ->
-      case compile sexprs of
-        Left err -> error err
-        Right code -> print code
+    Right code -> print code
   where
     parser = asRich $ mkParser $ parseAtom
 
