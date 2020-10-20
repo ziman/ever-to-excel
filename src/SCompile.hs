@@ -13,10 +13,12 @@ import Parser
 import SLang
 
 data State = State
-  { stStackSize :: Int
+
+data Env = Env
+  { envScope :: [[String]]  -- activation frames
   }
 
-type CG = RWST () SCode State (Except String)
+type CG = RWST Env SCode State (Except String)
 
 throw :: String -> CG a
 throw = lift . throwE
@@ -40,24 +42,37 @@ compileExpr :: RichSExpr Atom -> CG ()
 compileExpr (RSAtom (Number i)) = do
   emit $ PUSHI i
 
-compileExpr (RSList [RSAtom (Symbol "display"), xe]) = do
+compileExpr (RSList (RSAtom (Symbol f) : args)) =
+  compileForm f args
+
+compileExpr e = throw $ "can't compile: " ++ show e
+
+compileForm :: String -> [RichSExpr Atom] -> CG ()
+
+compileForm "display" [xe] = do
   compileExpr xe
   emit $ PRINT
   -- returns the printed value
 
-compileExpr (RSList [RSAtom (Symbol "+"), xe, ye]) = do
+compileForm "+" [xe, ye] = do
   compileExpr xe
   compileExpr ye
   emit $ BIN ADD
 
-compileExpr e = throw $ "can't compile: " ++ show e
+compileForm f _args = do
+  throw $ "unknown form: " ++ show f
 
 compile :: [RichSExpr Atom] -> Either String SCode
 compile es =
   case
     runIdentity $
       runExceptT $
-        evalRWST (traverse_ compileExpr es) () State{stStackSize=0}
+        evalRWST (traverse_ compileExpr es) initialEnv initialState
     of
       Left err -> Left err
-      Right ((), code)-> Right code
+      Right ((), code) -> Right code
+  where
+    initialState = State
+    initialEnv = Env
+      { envScope = []
+      }
