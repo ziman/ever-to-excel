@@ -18,7 +18,7 @@ data State = State
   }
 
 data Env = Env
-  { envScope :: ([String], [[String]])
+  { envScope :: [Def]
   , envArity :: Map String Int
   }
 
@@ -36,49 +36,62 @@ freshLabel = do
   put st{ stFreshLabels = stFreshLabels st + 1 }
   return $ "_" ++ show (stFreshLabels st)
 
-compileExpr :: Expr -> CG ()
+compileExpr :: Bool -> Expr -> CG ()
 
-compileExpr (Int i) = do
+compileExpr _tailPos (Int i) = do
   emit $ OP 0 (XInt i)
 
-compileExpr (Str s) = do
+compileExpr _tailPos (Str s) = do
   emit $ OP 0 (XStr s)
 
-compileExpr (Var s) = do
-  (scope, _parentScopes) <- envScope <$> ask
-  case lookup s (zip (reverse scope) [0..]) of
-    Nothing -> throw $ "unknown variable: " ++ show s
-    Just i  -> emit $ LLOAD (2 + i)
+compileExpr _tailPos (Var s) =
+  ask <&> envScope >>= \case
+    [] -> throw "no variables in global scope"
+    scope : _parentScopes ->
+      case lookup s (zip (reverse $ defArgs scope) [0..]) of
+        Nothing -> throw $ "unknown variable: " ++ show s
+        Just i  -> emit $ LLOAD (2 + i)
 
-compileExpr (Form "display" [xe]) = do
-  compileExpr xe
+compileExpr _tailPos (Form "display" [xe]) = do
+  compileExpr False xe
   emit $ PRINT
   -- returns the printed value
 
-compileExpr (Form op [xe, ye]) | op `elem` ["*","-","/","+"] = do
-  compileExpr xe
-  compileExpr ye
+compileExpr _tailPos (Form op [xe, ye]) | op `elem` ["*","-","/","+"] = do
+  compileExpr False xe
+  compileExpr False ye
   emit $ OP 2 $ XOp op (XTop 1) (XTop 0)
 
-compileExpr (Form "if-zero" [c, t, e]) = do
+compileExpr tailPos (Form "if-zero" [c, t, e]) = do
   lblThen <- freshLabel
   lblEnd <- freshLabel
 
-  compileExpr c
+  compileExpr False c
   emit $ JZ lblThen
-  compileExpr e
+  compileExpr tailPos e
   emit $ JMP lblEnd
   emit $ LABEL lblThen
-  compileExpr t
+  compileExpr tailPos t
   emit $ LABEL lblEnd
 
-compileExpr (Form f args) =
+compileExpr tailPos (Form f args) =
   ask <&> envArity <&> Map.lookup f >>= \case
     Just arity
-      | length args == arity
-      -> do
+      | length args /= arity
+      -> throw $ show f ++ " requires " ++ show arity ++ " arguments, "
+          ++ show (length args) ++ " given"
+
+      | tailPos -> do
+        -- if we're in the tail position, we must have an empty local stack, too
+        let baseOfs = 1 + length args
+        for_ (zip [0..] args) $ \(i, arg) -> do
+          compileExpr False arg
+          emit $ LSTORE (baseOfs - i)
+        emit $ JMP f  -- tail call!
+
+      | otherwise -> do
         emit $ OP 0 (XStr "ret")  -- return value
-        traverse_ compileExpr args  -- args
+        traverse_ (compileExpr False) args  -- args
 
         -- push activation record
         retLabel <- freshLabel -- a new label
@@ -100,16 +113,11 @@ compileExpr (Form f args) =
 
         -- leave the return value on the stack
 
-
-      | otherwise
-      -> throw $ show f ++ " requires " ++ show arity ++ " arguments, "
-          ++ show (length args) ++ " given"
     Nothing -> throw $ "unknown form: " ++ show f
 
-withScope :: [String] -> CG a -> CG a
-withScope vars = local $ \env -> env
-  { envScope = (vars, fst (envScope env) : snd (envScope env))
-  }
+withScope :: Def -> CG a -> CG a
+withScope def = local $
+  \env -> env{ envScope = def : envScope env }
 
 runCG :: Env -> State -> CG () -> Either String (Code String)
 runCG env st cg =
@@ -120,15 +128,15 @@ runCG env st cg =
 compileDef :: Def -> CG ()
 compileDef def = do
   emit $ LABEL (defName def)
-  withScope (defArgs def) $
-    compileExpr (defBody def)
+  withScope def $
+    compileExpr True (defBody def)
   emit $ LSTORE (2 + length (defArgs def))
   emit $ RET
 
 compile :: [Def] -> Either String (Code String)
 compile defs =
     runCG env st $ do
-      compileExpr (Form "main" [])
+      compileExpr False (Form "main" [])  -- we don't want to TCO the call to main
       emit $ HALT
       traverse_ compileDef defs
   where
@@ -136,7 +144,7 @@ compile defs =
       { stFreshLabels = 0
       }
     env = Env
-      { envScope = ([], [])
+      { envScope = []
       , envArity = Map.fromList [(defName d, length $ defArgs d) | d <- defs]
       }
 
