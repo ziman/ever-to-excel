@@ -19,6 +19,15 @@ type Exec = RWST (Map PC (Instr PC)) [Cell] (Map Addr Cell) (ExceptT String IO)
 eval :: XExpr -> Exec Cell
 eval (XStr s) = pure $ Str s
 eval (XInt i) = pure $ Int i
+eval (XOp "+" x y) = do
+  xv <- eval x
+  yv <- eval y
+  case (xv, yv) of
+    (Int x', Int y') -> pure $ Int (x' + y')
+    _ -> throw $ "(+): invalid arguments: " ++ show (xv, yv)
+eval (XTop i) = do
+  Addr sp <- getSP
+  peek (Addr $ sp - (i+1))
 eval e = throw $ "not implemented: eval " ++ show e
 
 peek :: Addr -> Exec Cell
@@ -56,10 +65,8 @@ throw msg = do
     Int pc -> lift $ throwE $ show (PC pc) ++ ": " ++ msg
     _ -> lift $ throwE msg
 
-{-
 emit :: Cell -> Exec ()
 emit cell = tell [cell]
--}
 
 push :: Cell -> Exec ()
 push cell = do
@@ -111,6 +118,17 @@ loop = do
       loop  -- NOT next!!
     LABEL _ ->
       next  -- NOP
+    PRINT -> do
+      top <- pop
+      emit top
+      push top
+      next
+    RET ->
+      pop >>= \case
+        Int pc -> do
+          poke addrPC (Int pc)
+          loop  -- NOT next!!
+        cell -> throw $ "bad return address: " ++ show cell
     instr -> throw $ "not implemented: " ++ show instr
 
 run :: Code PC -> IO (Either String [Cell])
