@@ -13,7 +13,7 @@ data Expr
 data Def = Def
   { defName :: String
   , defArgs :: [String]
-  , defBody :: Expr
+  , defBody :: [Expr]
   }
   deriving (Eq, Ord, Show)
 
@@ -30,9 +30,9 @@ astExpr (RSList (RSAtom (Symbol f) : args)) =
 astExpr s = Left $ "can't build AST from " ++ show s
 
 astDef :: RichSExpr Atom -> Either String Def
-astDef (RSList [RSAtom (Symbol "define"), RSList fargs, body]) =
+astDef (RSList (RSAtom (Symbol "define") : RSList fargs : body)) =
   traverse fromSymbol fargs >>= \case
     [] -> Left "empty argument list in define"
-    f : args -> Def f args <$> astExpr body
+    f : args -> Def f args <$> traverse astExpr body
 
 astDef ss = Left $ "can't build AST def from " ++ show ss

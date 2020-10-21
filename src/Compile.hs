@@ -36,6 +36,12 @@ freshLabel = do
   put st{ stFreshLabels = stFreshLabels st + 1 }
   return $ "_" ++ show (stFreshLabels st)
 
+unsnoc :: [a] -> Maybe ([a], a)
+unsnoc [] = Nothing
+unsnoc (x:xs) = case unsnoc xs of
+  Nothing      -> Just (  [], x)
+  Just (ys, z) -> Just (x:ys, z)
+
 compileExpr :: Bool -> Expr -> CG ()
 
 compileExpr _tailPos (Int i) = do
@@ -51,6 +57,16 @@ compileExpr _tailPos (Var s) =
       case lookup s (zip (reverse $ defArgs scope) [0..]) of
         Nothing -> throw $ "unknown variable: " ++ show s
         Just i  -> emit $ LLOAD (2 + i)
+
+compileExpr tailPos (Form "begin" es) =
+  case unsnoc es of
+    Nothing -> throw $ "begin requires arguments"
+    Just (sideEffects, retVal) -> do
+      for_ sideEffects $ \se -> do
+        compileExpr False se
+        emit $ POP 1
+
+      compileExpr tailPos retVal
 
 compileExpr _tailPos (Form "display" [xe]) = do
   compileExpr False xe
@@ -129,7 +145,7 @@ compileDef :: Def -> CG ()
 compileDef def = do
   emit $ LABEL (defName def)
   withScope def $
-    compileExpr True (defBody def)
+    compileExpr True (Form "begin" $ defBody def)
   emit $ LSTORE (2 + length (defArgs def))
   emit $ RET
 
