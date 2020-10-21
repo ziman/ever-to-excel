@@ -21,7 +21,7 @@ main = do
     Left err -> error err
     Right code -> do
       putStrLn $ unlines $ map show code
-      print $ run code
+      run code >>= print
   where
     parser = asRich $ mkParser $ parseAtom
 
