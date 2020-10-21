@@ -17,7 +17,7 @@ main = do
         >=> compile
   case pipeline input of
     Left err -> error err
-    Right code -> print code
+    Right code -> putStrLn $ unlines $ map show code
   where
     parser = asRich $ mkParser $ parseAtom
 

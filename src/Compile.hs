@@ -104,7 +104,6 @@ compile :: [Def] -> Either String (Code String)
 compile defs =
     runCG env st $ do
       end <- freshLabel
-
       compileExpr (Form "main" [])
       emit $ JMP end
       traverse_ compileDef defs
