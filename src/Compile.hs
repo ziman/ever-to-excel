@@ -46,9 +46,9 @@ compileExpr (Str s) = do
 
 compileExpr (Var s) = do
   (scope, _parentScopes) <- envScope <$> ask
-  case lookup s (zip scope [0..]) of
+  case lookup s (zip (reverse scope) [0..]) of
     Nothing -> throw $ "unknown variable: " ++ show s
-    Just i  -> emit $ LLOAD (1 + length scope - i)
+    Just i  -> emit $ LLOAD (2 + i)
 
 compileExpr (Form "display" [xe]) = do
   compileExpr xe
@@ -58,7 +58,12 @@ compileExpr (Form "display" [xe]) = do
 compileExpr (Form "+" [xe, ye]) = do
   compileExpr xe
   compileExpr ye
-  emit $ OP 2 $ XOp "+" (XTop 0) (XTop 1)
+  emit $ OP 2 $ XOp "+" (XTop 1) (XTop 0)
+
+compileExpr (Form "-" [xe, ye]) = do
+  compileExpr xe
+  compileExpr ye
+  emit $ OP 2 $ XOp "-" (XTop 1) (XTop 0)
 
 compileExpr (Form f args) =
   ask <&> envArity <&> Map.lookup f >>= \case
