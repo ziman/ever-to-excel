@@ -51,7 +51,10 @@ getInstr = do
     Just instr -> pure instr
 
 throw :: String -> Exec a
-throw = lift . throwE
+throw msg = do
+  peek addrPC >>= \case
+    Int pc -> lift $ throwE $ show (PC pc) ++ ": " ++ msg
+    _ -> lift $ throwE msg
 
 {-
 emit :: Cell -> Exec ()
@@ -62,12 +65,18 @@ push :: Cell -> Exec ()
 push cell = do
   sp <- getSP
   poke sp cell
-  pop (-1)
+  adjustSP 1
 
-pop :: Int -> Exec ()
-pop n =
+pop :: Exec Cell
+pop = do
+  -- SP points at the first invalid cell
+  adjustSP (-1)
+  peek =<< getSP
+
+adjustSP :: Int -> Exec ()
+adjustSP delta =
   peek addrSP >>= \case
-    Int sp -> poke addrSP (Int $ sp - n)
+    Int sp -> poke addrSP (Int $ sp + delta)
     spCell -> throw $ "unexpected SP: " ++ show spCell
 
 next :: Exec ()
@@ -85,9 +94,23 @@ loop = do
     HALT -> pure ()
     OP n e -> do
       cell <- eval e
-      pop n
+      adjustSP (-n)
       push cell
       next
+    LOAD (Addr addr) ofs -> do
+      push =<< peek (Addr $ addr+ofs)
+      next
+    STORE (Addr addr) ofs -> do
+      poke (Addr $ addr+ofs) =<< pop
+      next
+    PUSHL (PC pc) -> do
+      push (Int pc)
+      next
+    JMP (PC pc) -> do
+      poke addrPC (Int pc)
+      loop  -- NOT next!!
+    LABEL _ ->
+      next  -- NOP
     instr -> throw $ "not implemented: " ++ show instr
 
 run :: Code PC -> IO (Either String [Cell])
