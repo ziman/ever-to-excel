@@ -1,6 +1,7 @@
 module Main where
 
 import Control.Monad
+import Data.Foldable
 import Data.SCargot
 import qualified Data.Text.IO as Text
 
@@ -20,7 +21,8 @@ main = do
   case pipeline input of
     Left err -> error err
     Right code -> do
-      putStrLn $ unlines $ map show code
+      for_ (zip [0..] code) $ \(pc, instr) -> do
+        putStrLn $ show (pc :: Int) ++ ": " ++ show instr
       run code >>= print
   where
     parser = asRich $ mkParser $ parseAtom

@@ -99,8 +99,8 @@ next = do
 
 loop :: Exec ()
 loop = do
-  -- mem <- get
-  -- lift $ lift $ print $ map snd $ Map.toAscList mem
+  mem <- get
+  lift $ lift $ print $ map snd $ Map.toAscList mem
 
   getInstr >>= \case
     HALT -> pure ()
