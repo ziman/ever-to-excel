@@ -55,15 +55,10 @@ compileExpr (Form "display" [xe]) = do
   emit $ PRINT
   -- returns the printed value
 
-compileExpr (Form "+" [xe, ye]) = do
+compileExpr (Form op [xe, ye]) | op `elem` ["*","-","/","+"] = do
   compileExpr xe
   compileExpr ye
-  emit $ OP 2 $ XOp "+" (XTop 1) (XTop 0)
-
-compileExpr (Form "-" [xe, ye]) = do
-  compileExpr xe
-  compileExpr ye
-  emit $ OP 2 $ XOp "-" (XTop 1) (XTop 0)
+  emit $ OP 2 $ XOp op (XTop 1) (XTop 0)
 
 compileExpr (Form "if-zero" [c, t, e]) = do
   lblThen <- freshLabel

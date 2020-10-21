@@ -19,6 +19,18 @@ type Exec = RWST (Map PC (Instr PC)) [Cell] (Map Addr Cell) (ExceptT String IO)
 eval :: XExpr -> Exec Cell
 eval (XStr s) = pure $ Str s
 eval (XInt i) = pure $ Int i
+eval (XOp "/" x y) = do
+  xv <- eval x
+  yv <- eval y
+  case (xv, yv) of
+    (Int x', Int y') -> pure $ Int (x' `div` y')
+    _ -> throw $ "(/): invalid arguments: " ++ show (xv, yv)
+eval (XOp "*" x y) = do
+  xv <- eval x
+  yv <- eval y
+  case (xv, yv) of
+    (Int x', Int y') -> pure $ Int (x' * y')
+    _ -> throw $ "(*): invalid arguments: " ++ show (xv, yv)
 eval (XOp "-" x y) = do
   xv <- eval x
   yv <- eval y
