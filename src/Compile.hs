@@ -103,11 +103,9 @@ compileDef def = do
 compile :: [Def] -> Either String (Code String)
 compile defs =
     runCG env st $ do
-      end <- freshLabel
       compileExpr (Form "main" [])
-      emit $ JMP end
+      emit $ HALT
       traverse_ compileDef defs
-      emit $ LABEL end
   where
     st = State
       { stFreshLabels = 0

@@ -7,6 +7,7 @@ import qualified Data.Text.IO as Text
 import Parser
 import AST
 import Compile
+import Interpret
 
 main :: IO ()
 main = do
@@ -17,7 +18,9 @@ main = do
         >=> compile
   case pipeline input of
     Left err -> error err
-    Right code -> putStrLn $ unlines $ map show code
+    Right code -> do
+      putStrLn $ unlines $ map show code
+      print $ run code
   where
     parser = asRich $ mkParser $ parseAtom
 

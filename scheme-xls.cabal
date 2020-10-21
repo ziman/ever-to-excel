@@ -26,6 +26,7 @@ executable scheme-xls
       AST
       Bytecode
       Compile
+      Interpret
       Parser
       Paths_scheme_xls
   hs-source-dirs:

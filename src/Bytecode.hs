@@ -24,6 +24,7 @@ data Instr lbl
   | LABEL lbl
   | JMP lbl
   | RET  -- pops the top of the stack, jumps there
+  | HALT
   deriving (Eq, Ord, Show)
 
 type Code lbl = [Instr lbl]
