@@ -1,6 +1,6 @@
 module Compile (compile, resolve) where
 
-import Prelude hiding (lookup)
+import Prelude
 import Data.Functor
 import Data.Foldable
 import Data.Map (Map)
@@ -18,7 +18,7 @@ data State = State
   }
 
 data Env = Env
-  { envScope :: [[String]]  -- activation frames
+  { envScope :: ([String], [[String]])
   , envArity :: Map String Int
   }
 
@@ -43,6 +43,12 @@ compileExpr (Int i) = do
 
 compileExpr (Str s) = do
   emit $ OP 0 (XStr s)
+
+compileExpr (Var s) = do
+  (scope, _parentScopes) <- envScope <$> ask
+  case lookup s (zip scope [0..]) of
+    Nothing -> throw $ "unknown variable: " ++ show s
+    Just i  -> emit $ LLOAD (1 + length scope - i)
 
 compileExpr (Form "display" [xe]) = do
   compileExpr xe
@@ -88,6 +94,11 @@ compileExpr (Form f args) =
           ++ show (length args) ++ " given"
     Nothing -> throw $ "unknown form: " ++ show f
 
+withScope :: [String] -> CG a -> CG a
+withScope vars = local $ \env -> env
+  { envScope = (vars, fst (envScope env) : snd (envScope env))
+  }
+
 runCG :: Env -> State -> CG () -> Either String (Code String)
 runCG env st cg =
   fmap snd $
@@ -97,7 +108,8 @@ runCG env st cg =
 compileDef :: Def -> CG ()
 compileDef def = do
   emit $ LABEL (defName def)
-  compileExpr (defBody def)
+  withScope (defArgs def) $
+    compileExpr (defBody def)
   emit $ LSTORE (2 + length (defArgs def))
   emit $ RET
 
@@ -112,7 +124,7 @@ compile defs =
       { stFreshLabels = 0
       }
     env = Env
-      { envScope = []
+      { envScope = ([], [])
       , envArity = Map.fromList [(defName d, length $ defArgs d) | d <- defs]
       }
 
@@ -123,6 +135,7 @@ resolve code = traverse go code
     go = \case
       LOAD addr ofs -> pure $ LOAD addr ofs
       STORE addr ofs -> pure $ STORE addr ofs
+      LLOAD ofs -> pure $ LLOAD ofs
       LSTORE ofs -> pure $ LSTORE ofs
       OP n xe -> pure $ OP n xe
       POP n -> pure $ POP n

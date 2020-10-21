@@ -21,6 +21,7 @@ data Instr lbl
   = LOAD Addr Ofs
   | STORE Addr Ofs  -- also pops
   | LSTORE Ofs
+  | LLOAD Ofs
   | OP Int XExpr    -- evaluate expr, pop N values, push result
   | POP Int
   | PUSHL lbl

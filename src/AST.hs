@@ -6,6 +6,7 @@ import Data.SCargot.Repr
 data Expr
   = Int Int
   | Str String
+  | Var String
   | Form String [Expr]
   deriving (Eq, Ord, Show)
 
@@ -23,6 +24,7 @@ fromSymbol s = Left $ "symbol expected: " ++ show s
 astExpr :: RichSExpr Atom -> Either String Expr
 astExpr (RSAtom (Number i)) = Right $ Int i
 astExpr (RSAtom (String s)) = Right $ Str s
+astExpr (RSAtom (Symbol s)) = Right $ Var s
 astExpr (RSList (RSAtom (Symbol f) : args)) =
   Form f <$> traverse astExpr args
 astExpr s = Left $ "can't build AST from " ++ show s

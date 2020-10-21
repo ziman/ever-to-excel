@@ -99,8 +99,11 @@ next = do
 
 loop :: Exec ()
 loop = do
+  instr <- getInstr
   mem <- get
-  lift $ lift $ print $ map snd $ Map.toAscList mem
+  lift $ lift $ do
+    print $ map snd $ Map.toAscList mem
+    putStrLn $ "  " ++ show instr
 
   getInstr >>= \case
     HALT -> pure ()
@@ -114,6 +117,10 @@ loop = do
       next
     STORE (Addr addr) ofs -> do
       poke (Addr $ addr+ofs) =<< pop
+      next
+    LLOAD ofs -> do
+      Addr bp <- getBP
+      push =<< peek (Addr $ bp-ofs-1)
       next
     LSTORE ofs -> do
       Addr bp <- getBP
