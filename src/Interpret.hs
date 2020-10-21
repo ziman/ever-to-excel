@@ -108,8 +108,8 @@ loop = do
   instr <- getInstr
   mem <- get
   lift $ lift $ do
-    print $ map snd $ Map.toAscList mem
-    putStrLn $ "  " ++ show instr
+    putStrLn $ "  " ++ show (map snd $ Map.toAscList mem)
+    putStrLn $ show instr
 
   getInstr >>= \case
     HALT -> pure ()
