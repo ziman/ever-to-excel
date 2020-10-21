@@ -103,6 +103,9 @@ next = do
   poke addrPC (Int $ pc+1)
   loop
 
+jump :: PC -> Exec ()
+jump (PC pc) = poke addrPC (Int pc) *> loop
+
 loop :: Exec ()
 loop = do
   instr <- getInstr
@@ -135,9 +138,18 @@ loop = do
     PUSHL (PC pc) -> do
       push (Int pc)
       next
-    JMP (PC pc) -> do
-      poke addrPC (Int pc)
-      loop  -- NOT next!!
+    JZ pc ->
+      pop >>= \case
+        Int 0 -> jump pc
+        Int _ -> next
+        cell -> throw $ "bad JZ: " ++ show cell
+    JNEG pc ->
+      pop >>= \case
+        Int i
+          | i < 0 -> jump pc
+          | otherwise -> next
+        cell -> throw $ "bad JZ: " ++ show cell
+    JMP pc -> jump pc
     LABEL _ ->
       next  -- NOP
     PRINT -> do
@@ -150,9 +162,7 @@ loop = do
       next
     RET ->
       pop >>= \case
-        Int pc -> do
-          poke addrPC (Int pc)
-          loop  -- NOT next!!
+        Int pc -> jump (PC pc)
         cell -> throw $ "bad return address: " ++ show cell
 
 run :: Code PC -> IO (Either String [Cell])

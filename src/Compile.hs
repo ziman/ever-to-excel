@@ -65,6 +65,18 @@ compileExpr (Form "-" [xe, ye]) = do
   compileExpr ye
   emit $ OP 2 $ XOp "-" (XTop 1) (XTop 0)
 
+compileExpr (Form "if-zero" [c, t, e]) = do
+  lblThen <- freshLabel
+  lblEnd <- freshLabel
+
+  compileExpr c
+  emit $ JZ lblThen
+  compileExpr e
+  emit $ JMP lblEnd
+  emit $ LABEL lblThen
+  compileExpr t
+  emit $ LABEL lblEnd
+
 compileExpr (Form f args) =
   ask <&> envArity <&> Map.lookup f >>= \case
     Just arity
@@ -148,6 +160,8 @@ resolve code = traverse go code
       PRINT -> pure $ PRINT
       LABEL lbl -> LABEL <$> getL lbl
       JMP lbl -> JMP <$> getL lbl
+      JZ lbl -> JZ <$> getL lbl
+      JNEG lbl -> JNEG <$> getL lbl
       RET -> pure RET
       HALT -> pure HALT
 

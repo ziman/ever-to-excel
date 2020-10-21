@@ -28,6 +28,8 @@ data Instr lbl
   | PRINT
   | LABEL lbl
   | JMP lbl
+  | JZ lbl
+  | JNEG lbl
   | RET  -- pops the top of the stack, jumps there
   | HALT
   deriving (Eq, Ord, Show)
