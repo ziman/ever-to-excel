@@ -1,4 +1,4 @@
-module Compile (compile) where
+module Compile (compile, resolve) where
 
 import Prelude hiding (lookup)
 import Data.Functor
@@ -114,3 +114,27 @@ compile defs =
       { envScope = []
       , envArity = Map.fromList [(defName d, length $ defArgs d) | d <- defs]
       }
+
+resolve :: forall a. (Eq a, Ord a, Show a) => Code a -> Either String (Code PC)
+resolve code = traverse go code
+  where
+    go :: Instr a -> Either String (Instr PC)
+    go = \case
+      LOAD addr ofs -> pure $ LOAD addr ofs
+      STORE addr ofs -> pure $ STORE addr ofs
+      OP n xe -> pure $ OP n xe
+      POP n -> pure $ POP n
+      PUSHL lbl -> PUSHL <$> getL lbl
+      PRINT -> pure $ PRINT
+      LABEL lbl -> LABEL <$> getL lbl
+      JMP lbl -> JMP <$> getL lbl
+      RET -> pure RET
+      HALT -> pure HALT
+
+    getL :: a -> Either String PC
+    getL lbl = case Map.lookup lbl labels of
+      Nothing   -> Left $ "label not found: " ++ show lbl
+      Just addr -> Right addr
+
+    labels :: Map a PC
+    labels = Map.fromList [(lbl, PC i) | (i, LABEL lbl) <- zip [0..] code]

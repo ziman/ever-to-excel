@@ -10,7 +10,7 @@ data Cell
   | Str String
   deriving (Eq, Ord, Show)
 
-loop :: IntMap (Instr Int) -> IntMap Cell -> [Cell] -> Either String [Cell]
+loop :: IntMap (Instr PC) -> IntMap Cell -> [Cell] -> Either String [Cell]
 loop code mem acc
   | Just (Int pc) <- IntMap.lookup 0 mem
   , Just instr <- IntMap.lookup pc code
@@ -20,7 +20,7 @@ loop code mem acc
 
   | otherwise = Left "wrong PC"
 
-run :: Code Int -> Either String [Cell]
+run :: Code PC -> Either String [Cell]
 run code = loop instrs initialMemory []
   where
     instrs = IntMap.fromList [(pc, instr) | (pc, instr) <- zip [0..] code]

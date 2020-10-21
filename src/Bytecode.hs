@@ -3,6 +3,9 @@ module Bytecode where
 newtype Addr = Addr Int
   deriving (Eq, Ord, Show)
 
+newtype PC = PC Int
+  deriving (Eq, Ord, Show)
+
 data XExpr
   = XRef Addr
   | XTop Int  -- nth element in stack

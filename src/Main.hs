@@ -16,6 +16,7 @@ main = do
         decode parser
         >=> traverse astDef
         >=> compile
+        >=> resolve
   case pipeline input of
     Left err -> error err
     Right code -> do
