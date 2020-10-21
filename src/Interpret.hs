@@ -51,6 +51,11 @@ getSP = peek addrSP >>= \case
   Int i -> pure (Addr i)
   cell  -> throw $ "invalid SP: " ++ show cell
 
+getBP :: Exec Addr
+getBP = peek addrBP >>= \case
+  Int i -> pure (Addr i)
+  cell  -> throw $ "invalid BP: " ++ show cell
+
 getInstr :: Exec (Instr PC)
 getInstr = do
   pc <- getPC
@@ -94,8 +99,8 @@ next = do
 
 loop :: Exec ()
 loop = do
-  mem <- get
-  lift $ lift $ print $ map snd $ Map.toAscList mem
+  -- mem <- get
+  -- lift $ lift $ print $ map snd $ Map.toAscList mem
 
   getInstr >>= \case
     HALT -> pure ()
@@ -110,6 +115,10 @@ loop = do
     STORE (Addr addr) ofs -> do
       poke (Addr $ addr+ofs) =<< pop
       next
+    LSTORE ofs -> do
+      Addr bp <- getBP
+      poke (Addr $ bp-ofs-1) =<< pop
+      next
     PUSHL (PC pc) -> do
       push (Int pc)
       next
@@ -123,13 +132,15 @@ loop = do
       emit top
       push top
       next
+    POP n -> do
+      adjustSP (-n)
+      next
     RET ->
       pop >>= \case
         Int pc -> do
           poke addrPC (Int pc)
           loop  -- NOT next!!
         cell -> throw $ "bad return address: " ++ show cell
-    instr -> throw $ "not implemented: " ++ show instr
 
 run :: Code PC -> IO (Either String [Cell])
 run code =

@@ -98,6 +98,7 @@ compileDef :: Def -> CG ()
 compileDef def = do
   emit $ LABEL (defName def)
   compileExpr (defBody def)
+  emit $ LSTORE (2 + length (defArgs def))
   emit $ RET
 
 compile :: [Def] -> Either String (Code String)
@@ -122,6 +123,7 @@ resolve code = traverse go code
     go = \case
       LOAD addr ofs -> pure $ LOAD addr ofs
       STORE addr ofs -> pure $ STORE addr ofs
+      LSTORE ofs -> pure $ LSTORE ofs
       OP n xe -> pure $ OP n xe
       POP n -> pure $ POP n
       PUSHL lbl -> PUSHL <$> getL lbl
