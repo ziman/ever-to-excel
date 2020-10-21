@@ -25,8 +25,8 @@ executable scheme-xls
   other-modules:
       AST
       Bytecode
+      Compile
       Parser
-      SCompile
       Paths_scheme_xls
   hs-source-dirs:
       src

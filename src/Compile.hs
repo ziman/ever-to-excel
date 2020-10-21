@@ -1,4 +1,4 @@
-module SCompile (compile) where
+module Compile (compile) where
 
 import Prelude hiding (lookup)
 import Data.Foldable

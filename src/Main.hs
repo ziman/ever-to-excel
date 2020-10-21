@@ -6,7 +6,7 @@ import qualified Data.Text.IO as Text
 
 import Parser
 import AST
-import SCompile
+import Compile
 
 main :: IO ()
 main = do
