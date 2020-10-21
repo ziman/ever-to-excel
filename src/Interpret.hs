@@ -167,6 +167,7 @@ loop = do
     PRINT -> do
       top <- pop
       emit top
+      poke addrOUT top
       push top
       next
     POP n -> do
