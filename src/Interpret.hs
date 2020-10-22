@@ -224,8 +224,8 @@ loop = do
         Int pc -> jump (PC pc)
         cell -> throw $ "bad return address: " ++ show cell
 
-run :: Code PC -> IO (Either String Stats)
-run code =
+run :: Bool -> Code PC -> IO (Either String Stats)
+run debug code =
   fmap (fmap snd) $
     runExceptT $
       evalRWST loop env mem
@@ -235,7 +235,7 @@ run code =
         [ (PC pc, instr)
         | (pc, instr) <- zip [0..] code
         ]
-      , envDebug = True
+      , envDebug = debug
       }
     mem = Map.fromList
       [ (addrOUT, Int 0)  -- 0
