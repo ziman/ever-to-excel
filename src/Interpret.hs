@@ -46,6 +46,7 @@ eval (XOp "+" x y) = do
 eval (XTop i) = do
   Addr sp <- getSP
   peek (Addr $ sp - (i+1))
+eval (XRef addr) = peek addr
 eval e = throw $ "not implemented: eval " ++ show e
 
 peek :: Addr -> Exec Cell
