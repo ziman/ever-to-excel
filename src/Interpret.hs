@@ -16,8 +16,8 @@ data Cell
 
 data Stats = Stats
   { stOutput :: [Cell]
-  , stSpace :: Integer
-  , stTime  :: Integer
+  , stSpace :: Int
+  , stTime  :: Int
   }
   deriving (Eq, Ord, Show)
 
@@ -35,7 +35,12 @@ instance Monoid Stats where
     , stTime   = 0
     }
 
-type Exec = RWST (Map PC (Instr PC)) Stats (Map Addr Cell) (ExceptT String IO)
+type Exec =
+  RWST
+    (Map PC (Instr PC))
+    Stats
+    (Map Addr Cell)
+    (ExceptT String IO)
 
 eval :: XExpr -> Exec Cell
 eval (XStr s) = pure $ Str s
@@ -116,6 +121,11 @@ throw msg = do
 emit :: Cell -> Exec ()
 emit cell = tell mempty{ stOutput = [cell] }
 
+tick :: Exec ()
+tick = do
+  Addr sp <- getSP
+  tell mempty{ stTime = 1, stSpace = sp }
+
 push :: Cell -> Exec ()
 push cell = do
   sp <- getSP
@@ -151,6 +161,7 @@ loop = do
     putStrLn $ "  " ++ show (map snd $ Map.toAscList mem)
     putStrLn $ show instr
 
+  tick  -- collect stats
   getInstr >>= \case
     HALT -> pure ()
     OP n e -> do
