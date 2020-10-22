@@ -45,101 +45,109 @@ unsnoc (x:xs) = case unsnoc xs of
 type Arity = Int
 data Position = Tail Arity | NonTail
 
-compileExpr :: Position -> Expr -> CG ()
-
-compileExpr _pos (Int i) = do
-  emit $ OP 0 (XInt i)
-
-compileExpr _pos (Str s) = do
-  emit $ OP 0 (XStr s)
-
-compileExpr _pos (Var s) =
+toXExpr :: Expr -> CG (Maybe XExpr)
+toXExpr (Int i) = pure $ Just (XInt i)
+toXExpr (Str s) = pure $ Just (XStr s)
+toXExpr (Var s) =
   ask <&> envScope >>= \case
     [] -> throw "no variables in global scope"
     scope : _parentScopes ->
       case lookup s (zip (reverse $ defArgs scope) [0..]) of
         Nothing -> throw $ "unknown variable: " ++ show s
-        Just i  -> emit $ LLOAD (2 + i)
+        Just i  -> pure $ Just (XLoc (2 + i))
+toXExpr (Form op [xe, ye]) | op `elem` ["*","-","/","+"] = do
+  xxe <- toXExpr xe
+  yxe <- toXExpr ye
+  pure (XOp op <$> xxe <*> yxe)
+toXExpr _ = pure Nothing
 
-compileExpr pos (Form "begin" es) =
-  case unsnoc es of
-    Nothing -> throw $ "begin requires arguments"
-    Just (sideEffects, retVal) -> do
-      for_ sideEffects $ \se -> do
-        compileExpr NonTail se
-        emit $ POP 1
+compileExpr :: Position -> Expr -> CG ()
 
-      compileExpr pos retVal
+compileExpr pos expr =
+  toXExpr expr >>= \case
+    Just xexpr -> emit $ OP 0 xexpr
+    Nothing -> case expr of
+      Form "begin" es ->
+        case unsnoc es of
+          Nothing -> throw $ "begin requires arguments"
+          Just (sideEffects, retVal) -> do
+            for_ sideEffects $ \se -> do
+              compileExpr NonTail se
+              emit $ POP 1
 
-compileExpr _pos (Form "display" [xe]) = do
-  compileExpr NonTail xe
-  emit $ PRINT
-  -- returns the printed value
+            compileExpr pos retVal
 
-compileExpr _pos (Form op [xe, ye]) | op `elem` ["*","-","/","+"] = do
-  compileExpr NonTail xe
-  compileExpr NonTail ye
-  emit $ OP 2 $ XOp op (XTop 1) (XTop 0)
+      Form "display" [e] -> do
+        compileExpr NonTail e
+        emit $ PRINT
+        -- returns the printed value
 
-compileExpr pos (Form "if-zero" [c, t, e]) = do
-  lblThen <- freshLabel
-  lblEnd <- freshLabel
+      Form "if-zero" [c, t, e] -> do
+        lblThen <- freshLabel
+        lblEnd <- freshLabel
 
-  compileExpr NonTail c
-  emit $ JZ lblThen
-  compileExpr pos e
-  emit $ JMP lblEnd
-  emit $ LABEL lblThen
-  compileExpr pos t
-  emit $ LABEL lblEnd
+        compileExpr NonTail c
+        emit $ JZ lblThen
+        compileExpr pos e
+        emit $ JMP lblEnd
+        emit $ LABEL lblThen
+        compileExpr pos t
+        emit $ LABEL lblEnd
 
-compileExpr pos (Form f args) =
-  ask <&> envArity <&> Map.lookup f >>= \case
-    Just arity
-      | length args /= arity
-      -> throw $ show f ++ " requires " ++ show arity ++ " arguments, "
-          ++ show (length args) ++ " given"
+      Form op [xe, ye] | op `elem` ["*","-","/","+"] -> do
+        compileExpr NonTail xe
+        compileExpr NonTail ye
+        emit $ OP 2 $ XOp op (XTop 1) (XTop 0)
 
-      | Tail origArity <- pos
-      , origArity == arity
-      -> do
-        -- evaluate the args
-        for_ args $ \arg -> do
-          compileExpr NonTail arg
+      Form f args ->
+        ask <&> envArity <&> Map.lookup f >>= \case
+          Just arity
+            | length args /= arity
+            -> throw $ show f ++ " requires " ++ show arity ++ " arguments, "
+                ++ show (length args) ++ " given"
 
-        -- we have to store the args in a second pass
-        -- so that they all see the same environment
-        for_ [0..arity-1] $ \i -> do
-          emit $ LSTORE (2 + i)  -- pop the stack in reverse
+            | Tail origArity <- pos
+            , origArity == arity
+            -> do
+              -- evaluate the args
+              for_ args $ \arg -> do
+                compileExpr NonTail arg
 
-        -- tail call!
-        emit $ JMP f
+              -- we have to store the args in a second pass
+              -- so that they all see the same environment
+              for_ [0..arity-1] $ \i -> do
+                emit $ LSTORE (2 + i)  -- pop the stack in reverse
 
-      | otherwise -> do
-        emit $ OP 0 (XStr "ret")  -- return value
-        traverse_ (compileExpr NonTail) args  -- args
+              -- tail call!
+              emit $ JMP f
 
-        -- push activation record
-        retLabel <- freshLabel -- a new label
-        emit $ LOAD addrBP  -- save BP
-        emit $ PUSHL retLabel  -- save PC
+            | otherwise -> do
+              emit $ OP 0 (XStr "ret")  -- return value
+              traverse_ (compileExpr NonTail) args  -- args
 
-        -- set the base pointer to the stack pointer
-        emit $ LOAD  addrSP
-        emit $ STORE addrBP
+              -- push activation record
+              retLabel <- freshLabel -- a new label
+              emit $ LOAD addrBP  -- save BP
+              emit $ PUSHL retLabel  -- save PC
 
-        emit $ JMP f
-        -- now the called function takes over
-        -- it will pop the PC and jump to it
-        emit $ LABEL retLabel
+              -- set the base pointer to the stack pointer
+              emit $ LOAD  addrSP
+              emit $ STORE addrBP
 
-        -- restore the base pointer
-        emit $ STORE addrBP
-        emit $ POP (length args)
+              emit $ JMP f
+              -- now the called function takes over
+              -- it will pop the PC and jump to it
+              emit $ LABEL retLabel
 
-        -- leave the return value on the stack
+              -- restore the base pointer
+              emit $ STORE addrBP
+              emit $ POP (length args)
 
-    Nothing -> throw $ "unknown form: " ++ show f
+              -- leave the return value on the stack
+
+          Nothing -> throw $ "unknown form: " ++ show f
+
+      _ -> throw $ "can't compile: " ++ show expr
 
 withScope :: Def -> CG a -> CG a
 withScope def = local $

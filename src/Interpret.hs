@@ -47,6 +47,9 @@ eval (XTop i) = do
   Addr sp <- getSP
   peek (Addr $ sp - (i+1))
 eval (XRef addr) = peek addr
+eval (XLoc ofs) = do
+  Addr bp <- getBP
+  peek (Addr $ bp-ofs-1)
 eval e = throw $ "not implemented: eval " ++ show e
 
 peek :: Addr -> Exec Cell

@@ -8,6 +8,7 @@ newtype PC = PC Int
 
 data XExpr
   = XRef Addr
+  | XLoc Int
   | XTop Int  -- nth element in stack
   | XInt Int
   | XStr String
