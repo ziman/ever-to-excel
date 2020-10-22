@@ -20,6 +20,40 @@ Compile Scheme(*) programs to spreadsheets.
     (fac 1 6)))
 ```
 
+### Bytecode
+
+```
+; -------[ main ] -------------
+OP 0 (XStr "ret")
+OP 0 (XInt 1)
+OP 0 (XInt 6)
+LOAD (Addr 3)
+PUSHL (PC 8)
+LOAD (Addr 2)
+STORE (Addr 3)
+JMP (PC 13)
+LABEL (PC 8)
+STORE (Addr 3)
+POP 2
+PRINT
+HALT
+; -------[ fac ] --------------
+LABEL (PC 13)
+OP 0 (XLoc 2)
+JZ (PC 22)
+OP 0 (XOp "*" (XLoc 2) (XLoc 3))
+OP 0 (XOp "-" (XLoc 2) (XInt 1))
+LSTORE 2
+LSTORE 3
+JMP (PC 13)
+JMP (PC 24)
+LABEL (PC 22)
+OP 0 (XLoc 3)
+LABEL (PC 24)
+LSTORE 4
+RET
+```
+
 ### Output
 
 <a href="https://raw.githubusercontent.com/ziman/scheme-xls/master/screenshot.png">
