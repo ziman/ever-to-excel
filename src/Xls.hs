@@ -179,18 +179,21 @@ halve code =
     (xs, ys@((pc,_):_)) -> (pc, xs, ys)
     _ -> error $ "halve: bad input: " ++ show code
 
-toExcel :: Int -> XE -> String
-toExcel row = \case
+xePrevRow :: XE
+xePrevRow = XEOp "-" (XEFun "ROW" []) (XEInt 1)
+
+toExcel :: XE -> String
+toExcel = \case
   XEInt i -> show i
   XEStr s -> show s
   XEAddr (Addr i) -> show i
-  XERef e -> toExcel row $
-    XEFun "INDIRECT" [XEFun "ADDRESS" [XEInt (row+1), XEOp "+" e (XEInt 1)]]
+  XERef e -> toExcel $
+    XEFun "INDIRECT" [XEFun "ADDRESS" [xePrevRow, XEOp "+" e (XEInt 1)]]
   XEOp op x y ->
-    "(" ++ toExcel row x ++ ")"
+    "(" ++ toExcel x ++ ")"
     ++ op
-    ++ "(" ++ toExcel row y ++ ")"
+    ++ "(" ++ toExcel y ++ ")"
   XEFun f args ->
     f ++ "("
-    ++ intercalate ";" (map (toExcel row) args)
+    ++ intercalate ";" (map toExcel args)
     ++ ")"

@@ -72,3 +72,13 @@ However:
 * There are some spreadsheet-specific optimisations,
   e.g. compiling expressions directly to spreadsheet expressions
   rather than into multiple instructions, whenever possible.
+
+More details:
+* Every row in the spreadsheet is the same. (Except for the initial row,
+  which does not contain any formulas.)
+* We could make every _cell_ the same but we use the static knowledge of the column
+  number to make some optimisations.
+* The compiler runs the program in the interpreter first
+  to determine the optimal width and height of the spreadsheet.
+  This is not cheating; it is used just to make prettier spreadsheets
+  by removing the visual noise caused by unused cells.

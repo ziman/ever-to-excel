@@ -38,8 +38,8 @@ main = do
             "\t0\t4\t4\t"
             :
             [ intercalate "\t"
-              [ "=" ++ toExcel row (xeCell icode (Addr addr))
+              [ "=" ++ toExcel (xeCell icode (Addr addr))
               | addr <- [0..stSpace stats-1]
               ]
-            | row <- [0..stTime stats-1]
+            | _row <- [0..stTime stats-1]
             ]
