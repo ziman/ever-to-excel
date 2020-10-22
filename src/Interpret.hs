@@ -166,9 +166,10 @@ loop = do
   when debug $ do
     instr <- getInstr
     mem <- get
+    PC pc <- getPC
     lift $ lift $ do
       putStrLn $ "  " ++ show (map snd $ Map.toAscList mem)
-      putStrLn $ show instr
+      putStrLn $ show pc ++ ": " ++ show instr
 
   tick  -- collect stats
   getInstr >>= \case

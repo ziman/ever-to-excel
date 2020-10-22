@@ -47,7 +47,7 @@ xeInc :: Int -> XE -> XE
 xeInc i = XEOp "+" (XEInt i)
 
 xeLoc :: Int -> XE
-xeLoc ofs = xeRefOfs addrBP (-ofs)
+xeLoc ofs = xeRefOfs addrBP (-ofs-1)
 
 xeTop :: Int -> XE
 xeTop ofs = xeRefOfs addrSP (-ofs-1)
@@ -66,18 +66,21 @@ xeInstr cellAddr = \case
   LOAD addr
     | cellAddr == addrPC -> xeInc 1 (xeRef addrPC)
     | cellAddr == addrSP -> xeInc 1 (xeRef addrSP)
+    | cellAddr == addrOUT -> XEStr ""
     | otherwise -> xeCond cellAddr
       [ (xeIsTop 0 cellAddr, xeRef addr)
       ]
   STORE addr
     | cellAddr == addrPC -> xeInc 1 (xeRef addrPC)
     | cellAddr == addrSP -> xeInc (-1) (xeRef addrSP)
+    | cellAddr == addrOUT -> XEStr ""
     | cellAddr == addr -> xeTop 0
     | otherwise -> xeCond cellAddr []
 
   LLOAD ofs
     | cellAddr == addrPC -> xeInc 1 (xeRef addrPC)
     | cellAddr == addrSP -> xeInc 1 (xeRef addrSP)
+    | cellAddr == addrOUT -> XEStr ""
     | otherwise -> xeCond cellAddr
       [ (xeIsTop 0 cellAddr, xeLoc ofs)
       ]
@@ -85,8 +88,9 @@ xeInstr cellAddr = \case
   LSTORE ofs
     | cellAddr == addrPC -> xeInc 1 (xeRef addrPC)
     | cellAddr == addrSP -> xeInc (-1) (xeRef addrSP)
+    | cellAddr == addrOUT -> XEStr ""
     | otherwise -> xeCond cellAddr
-      [ ( XEAddr cellAddr `xeEq` xeInc (-ofs) (xeRef addrBP)
+      [ ( XEAddr cellAddr `xeEq` xeInc (-ofs-1) (xeRef addrBP)
         , xeTop 0
         )
       ]
@@ -94,6 +98,7 @@ xeInstr cellAddr = \case
   OP n expr
     | cellAddr == addrPC -> xeInc 1 (xeRef addrPC)
     | cellAddr == addrSP -> xeInc (1-n) (xeRef addrSP)
+    | cellAddr == addrOUT -> XEStr ""
     | otherwise -> xeCond cellAddr
       [ (xeIsTop n cellAddr, xeXExpr expr)
       ]
@@ -101,11 +106,13 @@ xeInstr cellAddr = \case
   POP n
     | cellAddr == addrPC -> xeInc 1 (xeRef addrPC)
     | cellAddr == addrSP -> xeInc (-n) (xeRef addrSP)
+    | cellAddr == addrOUT -> XEStr ""
     | otherwise -> xeCond cellAddr []
 
   PUSHL (PC pc)
     | cellAddr == addrPC -> xeInc 1 (xeRef addrPC)
     | cellAddr == addrSP -> xeInc 1 (xeRef addrSP)
+    | cellAddr == addrOUT -> XEStr ""
     | otherwise -> xeCond cellAddr
       [ (xeIsTop 0 cellAddr, XEInt pc)
       ]
@@ -117,10 +124,12 @@ xeInstr cellAddr = \case
 
   LABEL _
     | cellAddr == addrPC -> xeInc 1 (xeRef addrPC)
+    | cellAddr == addrOUT -> XEStr ""
     | otherwise -> xeCond cellAddr []
 
   JMP (PC pc)
     | cellAddr == addrPC -> XEInt pc
+    | cellAddr == addrOUT -> XEStr ""
     | otherwise -> xeCond cellAddr []
 
   JZ (PC pc)
@@ -128,6 +137,8 @@ xeInstr cellAddr = \case
       xeIf (xeTop 0 `xeEq` XEInt 0)
         (XEInt pc)
         (xeInc 1 (xeRef addrPC))
+    | cellAddr == addrSP -> xeInc (-1) (xeRef addrSP)
+    | cellAddr == addrOUT -> XEStr ""
     | otherwise -> xeCond cellAddr []
 
   JNEG (PC pc)
@@ -135,14 +146,19 @@ xeInstr cellAddr = \case
       xeIf (XEOp "<" (xeTop 0) (XEInt 0))
         (XEInt pc)
         (xeInc 1 (xeRef addrPC))
+    | cellAddr == addrSP -> xeInc (-1) (xeRef addrSP)
+    | cellAddr == addrOUT -> XEStr ""
     | otherwise -> xeCond cellAddr []
 
   RET
     | cellAddr == addrPC -> xeTop 0
     | cellAddr == addrSP -> xeInc (-1) (xeRef addrSP)
+    | cellAddr == addrOUT -> XEStr ""
     | otherwise -> xeCond cellAddr []
 
-  HALT -> xeCond cellAddr []  -- stay stuck here forever
+  HALT
+    | cellAddr == addrOUT -> XEStr ""
+    | otherwise -> xeCond cellAddr []  -- stay stuck here forever
 
 xeCell :: ICode -> Addr -> XE
 xeCell [] _ = error "empty code"

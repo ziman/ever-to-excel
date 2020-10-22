@@ -1,8 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.2.
+-- This file has been generated from package.yaml by hpack version 0.33.0.
 --
 -- see: https://github.com/sol/hpack
+--
+-- hash: b94db66c903ee619faf49fb292f2804c5452c44fb1f8c044c620a72614997acf
 
 name:           scheme-xls
 version:        0.1.0.0
