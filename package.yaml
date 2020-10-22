@@ -1,11 +1,11 @@
-name:                scheme-xls
+name:                ever-to-excel
 version:             0.1.0.0
-github:              "ziman/scheme-xls"
+github:              "ziman/ever-to-excel"
 license:             BSD3
 author:              "Matus Tejiscak"
 maintainer:          "ziman@functor.sk"
 copyright:           "2020 Matus Tejiscak"
-description:         Scheme to spreadsheet compiler
+description:         Compiler to spreadsheets
 
 dependencies:
 - base >= 4.7 && < 5
@@ -50,5 +50,5 @@ ghc-options:
 - -Werror
 
 executables:
-  scheme-xls:
+  ever-to-excel:
     main: Main.hs

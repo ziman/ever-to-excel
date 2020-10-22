@@ -3,3 +3,4 @@
 scheme-xls.cabal
 stack.yaml.lock
 *.tsv
+*.cabal

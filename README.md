@@ -1,12 +1,13 @@
-# scheme-xls
+# ever-to-excel
 
-Compile Scheme(*) programs to spreadsheets.
-
-(*) The current input language is actually much simpler than Scheme.
+Compile programs to spreadsheets.
 
 ## Example
 
 ### Input
+
+The input language is called Ever.
+It's a restricted variant of Scheme.
 
 ```scheme
 (define (fac acc n)
@@ -21,6 +22,8 @@ Compile Scheme(*) programs to spreadsheets.
 ```
 
 ### Bytecode
+
+Ever compiles to instructions for a stack VM.
 
 ```
 ; -------[ main ] -------------
@@ -56,16 +59,16 @@ RET
 
 ### Output
 
-<a href="https://raw.githubusercontent.com/ziman/scheme-xls/master/screenshot.png">
-	<img src="https://raw.githubusercontent.com/ziman/scheme-xls/master/screenshot.png" width="300" />
+<a href="https://raw.githubusercontent.com/ziman/ever-to-excel/master/screenshot.png">
+	<img src="https://raw.githubusercontent.com/ziman/ever-to-excel/master/screenshot.png" width="300" />
 </a>
 
 ## Some details
 
-The input language looks like Scheme but it's restricted even more than C.
+The input language, Ever, looks like Scheme but it's restricted even more than C.
 * You cannot have local variables (there's no `let`).
 * You cannot access the parent scope.
-* There is no heap.
+* There is no heap, no dynamic allocation, no closures.
 
 All of the above can be addressed; it just needs more work. :)
 
