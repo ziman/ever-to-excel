@@ -150,11 +150,13 @@ compileDef def = do
   emit $ RET
 
 compile :: [Def] -> Either String (Code String)
-compile defs =
-    runCG env st $ do
-      compileExpr False (Form "main" [])  -- we don't want to TCO the call to main
+compile defs = runCG env st $
+  case lookup "main" [(defName d, d) | d <- defs] of
+    Nothing -> throw $ "could not find main"
+    Just main -> do
+      traverse_ (compileExpr False) (defBody main) -- no TCO here because we don't have an activation record
       emit $ HALT
-      traverse_ compileDef defs
+      traverse_ compileDef [d | d <- defs, defName d /= "main"]
   where
     st = State
       { stFreshLabels = 0

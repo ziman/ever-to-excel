@@ -28,6 +28,7 @@ executable scheme-xls
       Compile
       Interpret
       Parser
+      Xls
       Paths_scheme_xls
   hs-source-dirs:
       src
