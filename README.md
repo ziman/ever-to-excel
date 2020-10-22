@@ -65,6 +65,9 @@ RET
 The input language looks like Scheme but it's restricted even more than C.
 * You cannot have local variables (there's no `let`).
 * You cannot access the parent scope.
+* There is no heap.
+
+All of the above can be addressed; it just needs more work. :)
 
 However:
 * You can have (mutual) recursion.
