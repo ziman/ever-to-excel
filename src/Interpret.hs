@@ -3,6 +3,8 @@ module Interpret (Cell(..), run) where
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 
+import Data.Functor ((<&>))
+import Control.Monad (when)
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Except
 import Control.Monad.Trans.RWS.CPS
@@ -35,9 +37,14 @@ instance Monoid Stats where
     , stTime   = 0
     }
 
+data Env = Env
+  { envCode :: Map PC (Instr PC)
+  , envDebug :: Bool
+  }
+
 type Exec =
   RWST
-    (Map PC (Instr PC))
+    Env
     Stats
     (Map Addr Cell)
     (ExceptT String IO)
@@ -107,7 +114,7 @@ getBP = peek addrBP >>= \case
 getInstr :: Exec (Instr PC)
 getInstr = do
   pc <- getPC
-  code <- ask
+  code <- ask <&> envCode
   case Map.lookup pc code of
     Nothing -> throw $ "no instruction at " ++ show pc
     Just instr -> pure instr
@@ -155,11 +162,13 @@ jump (PC pc) = poke addrPC (Int pc) *> loop
 
 loop :: Exec ()
 loop = do
-  instr <- getInstr
-  mem <- get
-  lift $ lift $ do
-    putStrLn $ "  " ++ show (map snd $ Map.toAscList mem)
-    putStrLn $ show instr
+  debug <- ask <&> envDebug
+  when debug $ do
+    instr <- getInstr
+    mem <- get
+    lift $ lift $ do
+      putStrLn $ "  " ++ show (map snd $ Map.toAscList mem)
+      putStrLn $ show instr
 
   tick  -- collect stats
   getInstr >>= \case
@@ -218,9 +227,15 @@ run :: Code PC -> IO (Either String Stats)
 run code =
   fmap (fmap snd) $
     runExceptT $
-      evalRWST loop instrs mem
+      evalRWST loop env mem
   where
-    instrs = Map.fromList [(PC pc, instr) | (pc, instr) <- zip [0..] code]
+    env = Env
+      { envCode  = Map.fromList
+        [ (PC pc, instr)
+        | (pc, instr) <- zip [0..] code
+        ]
+      , envDebug = True
+      }
     mem = Map.fromList
       [ (addrOUT, Int 0)  -- 0
       , (addrPC,  Int 0)  -- 1
