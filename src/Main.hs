@@ -57,7 +57,7 @@ main = join $ execParser opts
     parser = main'
       <$> strArgument
         ( metavar "input.scm"
-        <> help "input file"
+        <> help "input Ever file"
         )
       <*> strOption
         ( short 'o'
