@@ -42,15 +42,18 @@ unsnoc (x:xs) = case unsnoc xs of
   Nothing      -> Just (  [], x)
   Just (ys, z) -> Just (x:ys, z)
 
-compileExpr :: Bool -> Expr -> CG ()
+type Arity = Int
+data Position = Tail Arity | NonTail
 
-compileExpr _tailPos (Int i) = do
+compileExpr :: Position -> Expr -> CG ()
+
+compileExpr _pos (Int i) = do
   emit $ OP 0 (XInt i)
 
-compileExpr _tailPos (Str s) = do
+compileExpr _pos (Str s) = do
   emit $ OP 0 (XStr s)
 
-compileExpr _tailPos (Var s) =
+compileExpr _pos (Var s) =
   ask <&> envScope >>= \case
     [] -> throw "no variables in global scope"
     scope : _parentScopes ->
@@ -58,56 +61,57 @@ compileExpr _tailPos (Var s) =
         Nothing -> throw $ "unknown variable: " ++ show s
         Just i  -> emit $ LLOAD (2 + i)
 
-compileExpr tailPos (Form "begin" es) =
+compileExpr pos (Form "begin" es) =
   case unsnoc es of
     Nothing -> throw $ "begin requires arguments"
     Just (sideEffects, retVal) -> do
       for_ sideEffects $ \se -> do
-        compileExpr False se
+        compileExpr NonTail se
         emit $ POP 1
 
-      compileExpr tailPos retVal
+      compileExpr pos retVal
 
-compileExpr _tailPos (Form "display" [xe]) = do
-  compileExpr False xe
+compileExpr _pos (Form "display" [xe]) = do
+  compileExpr NonTail xe
   emit $ PRINT
   -- returns the printed value
 
-compileExpr _tailPos (Form op [xe, ye]) | op `elem` ["*","-","/","+"] = do
-  compileExpr False xe
-  compileExpr False ye
+compileExpr _pos (Form op [xe, ye]) | op `elem` ["*","-","/","+"] = do
+  compileExpr NonTail xe
+  compileExpr NonTail ye
   emit $ OP 2 $ XOp op (XTop 1) (XTop 0)
 
-compileExpr tailPos (Form "if-zero" [c, t, e]) = do
+compileExpr pos (Form "if-zero" [c, t, e]) = do
   lblThen <- freshLabel
   lblEnd <- freshLabel
 
-  compileExpr False c
+  compileExpr NonTail c
   emit $ JZ lblThen
-  compileExpr tailPos e
+  compileExpr pos e
   emit $ JMP lblEnd
   emit $ LABEL lblThen
-  compileExpr tailPos t
+  compileExpr pos t
   emit $ LABEL lblEnd
 
-compileExpr tailPos (Form f args) =
+compileExpr pos (Form f args) =
   ask <&> envArity <&> Map.lookup f >>= \case
     Just arity
       | length args /= arity
       -> throw $ show f ++ " requires " ++ show arity ++ " arguments, "
           ++ show (length args) ++ " given"
 
-      | tailPos -> do
+      | Tail _origArity <- pos
+      -> do
         -- if we're in the tail position, we must have an empty local stack, too
         let baseOfs = 1 + length args
         for_ (zip [0..] args) $ \(i, arg) -> do
-          compileExpr False arg
+          compileExpr NonTail arg
           emit $ LSTORE (baseOfs - i)
         emit $ JMP f  -- tail call!
 
       | otherwise -> do
         emit $ OP 0 (XStr "ret")  -- return value
-        traverse_ (compileExpr False) args  -- args
+        traverse_ (compileExpr NonTail) args  -- args
 
         -- push activation record
         retLabel <- freshLabel -- a new label
@@ -145,16 +149,18 @@ compileDef :: Def -> CG ()
 compileDef def = do
   emit $ LABEL (defName def)
   withScope def $
-    compileExpr True (Form "begin" $ defBody def)
-  emit $ LSTORE (2 + length (defArgs def))
+    compileExpr (Tail arity) (Form "begin" $ defBody def)
+  emit $ LSTORE (2 + arity)
   emit $ RET
+ where
+  arity = length (defArgs def)
 
 compile :: [Def] -> Either String (Code String)
 compile defs = runCG env st $
   case lookup "main" [(defName d, d) | d <- defs] of
     Nothing -> throw $ "could not find main"
     Just main -> do
-      traverse_ (compileExpr False) (defBody main) -- no TCO here because we don't have an activation record
+      traverse_ (compileExpr NonTail) (defBody main) -- no TCO here because we don't have an activation record
       emit $ HALT
       traverse_ compileDef [d | d <- defs, defName d /= "main"]
   where
