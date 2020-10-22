@@ -1,2 +1,2 @@
 (define (main)
-  (display (+ 1 2)))
+  (display "hello world!"))
