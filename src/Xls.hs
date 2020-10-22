@@ -2,68 +2,56 @@ module Xls where
 
 import Bytecode
 
--- relative indexing
-data XE ix
+data XE
   = XEInt Int
   | XEStr String
-  | XEAddr ix
-  | XERef (XE ix)
-  | XEOp String (XE ix) (XE ix)
-  | XEFun String [XE ix]
+  | XEAddr Addr
+  | XERef XE
+  | XEOp String XE XE
+  | XEFun String [XE]
   deriving (Eq, Ord, Show)
 
--- type Pos = (Int, Int)
 type ICode = [(PC, Instr PC)]
-
-{-
-ref :: Pos -> XE Pos
-ref (x,y) = XEFun "INDIRECT" [XEFun "ADDRESS" [XEInt (x+1), XEInt (y+1)]]
--}
 
 toICode :: Code PC -> ICode
 toICode = zip $ map PC [0..]
 
-{-
-toAbsolute :: Int -> XE Addr -> XE Pos
-toAbsolute = error "TODO"
--}
-
-xeIf :: XE ix -> XE ix -> XE ix -> XE ix
+xeIf :: XE -> XE -> XE -> XE
 xeIf c t e = XEFun "IF" [c, t, e]
 
-xeEq :: XE ix -> XE ix -> XE ix
+xeEq :: XE -> XE -> XE
 xeEq = XEOp "="
 
-xeNot :: XE ix -> XE ix
+xeNot :: XE -> XE
 xeNot c = XEFun "NOT" [c]
 
-xeRef :: Addr -> XE Addr
+xeRef :: Addr -> XE
 xeRef = XERef . XEAddr
 
-xeRefOfs :: Addr -> Int -> XE Addr
+xeRefOfs :: Addr -> Int -> XE
 xeRefOfs addr ofs = XERef (xeInc ofs (xeRef addr))
 
-xeIsTop :: Int -> Addr -> XE Addr
+xeIsTop :: Int -> Addr -> XE
 xeIsTop 0 cellAddr =
   XEAddr cellAddr `xeEq` xeRef addrSP
 xeIsTop ofs cellAddr =
   XEAddr cellAddr `xeEq` XEOp "-" (xeRef addrSP) (XEInt ofs)
 
-xeCond :: Addr -> [(XE Addr, XE Addr)] -> XE Addr
+xeCond :: Addr -> [(XE, XE)] -> XE
 xeCond cellAddr [] = xeRef cellAddr
 xeCond cellAddr ((cond, rhs):xs) =
   xeIf cond rhs $ xeCond cellAddr xs
 
-xeInc :: Int -> XE ix -> XE ix
+xeInc :: Int -> XE -> XE
 xeInc i = XEOp "+" (XEInt i)
 
-xeLoc :: Int -> XE Addr
+xeLoc :: Int -> XE
 xeLoc ofs = xeRefOfs addrBP (-ofs)
 
-xeTop :: Int -> XE Addr
+xeTop :: Int -> XE
 xeTop ofs = xeRefOfs addrSP (-ofs)
 
-xeXExpr :: XExpr -> XE Addr
+xeXExpr :: XExpr -> XE
 xeXExpr (XRef addr) = XEAddr addr
 xeXExpr (XLoc ofs) = xeLoc ofs
 xeXExpr (XTop ofs) = xeTop ofs
@@ -72,7 +60,7 @@ xeXExpr (XStr s) = XEStr s
 xeXExpr (XFun f args) = XEFun f (map xeXExpr args)
 xeXExpr (XOp op x y) = XEOp op (xeXExpr x) (xeXExpr y)
 
-xeInstr :: Addr -> Instr PC -> XE Addr
+xeInstr :: Addr -> Instr PC -> XE
 xeInstr cellAddr = \case
   LOAD addr
     | cellAddr == addrPC -> xeInc 1 (xeRef addrPC)
@@ -155,7 +143,7 @@ xeInstr cellAddr = \case
 
   HALT -> xeCond cellAddr []  -- stay stuck here forever
 
-xeCell :: ICode -> Addr -> XE Addr
+xeCell :: ICode -> Addr -> XE
 xeCell [] _ = error "empty code"
 xeCell [(_, instr)] pos = xeInstr pos instr
 xeCell code pos =
