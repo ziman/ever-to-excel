@@ -1,4 +1,4 @@
-module Interpret (Cell(..), run) where
+module Interpret (Cell(..), run, Stats(..)) where
 
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
