@@ -34,10 +34,12 @@ main = do
           print stats
 
           let icode = toICode code
-          writeFile "output.tsv" $ unlines
+          writeFile "output.tsv" $ unlines $
+            "\t0\t4\t4\t"
+            :
             [ intercalate "\t"
-              [ toExcel row $ xeCell icode (Addr addr)
+              [ "=" ++ toExcel row (xeCell icode (Addr addr))
               | addr <- [0..stSpace stats-1]
               ]
-            | row <- [0..stTime stats]
+            | row <- [0..stTime stats-1]
             ]

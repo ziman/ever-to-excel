@@ -50,7 +50,7 @@ xeLoc :: Int -> XE
 xeLoc ofs = xeRefOfs addrBP (-ofs)
 
 xeTop :: Int -> XE
-xeTop ofs = xeRefOfs addrSP (-ofs)
+xeTop ofs = xeRefOfs addrSP (-ofs-1)
 
 xeXExpr :: XExpr -> XE
 xeXExpr (XRef addr) = XEAddr addr
@@ -95,7 +95,7 @@ xeInstr cellAddr = \case
     | cellAddr == addrPC -> xeInc 1 (xeRef addrPC)
     | cellAddr == addrSP -> xeInc (1-n) (xeRef addrSP)
     | otherwise -> xeCond cellAddr
-      [ (xeIsTop (n-1) cellAddr, xeXExpr expr)
+      [ (xeIsTop n cellAddr, xeXExpr expr)
       ]
 
   POP n
@@ -169,7 +169,7 @@ toExcel row = \case
   XEStr s -> show s
   XEAddr (Addr i) -> show i
   XERef e -> toExcel row $
-    XEFun "INDIRECT" [XEFun "ADDRESS" [XEInt row, e]]
+    XEFun "INDIRECT" [XEFun "ADDRESS" [XEInt (row+1), XEOp "+" e (XEInt 1)]]
   XEOp op x y ->
     "(" ++ toExcel row x ++ ")"
     ++ op
