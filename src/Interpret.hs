@@ -14,7 +14,28 @@ data Cell
   | Str String
   deriving (Eq, Ord, Show)
 
-type Exec = RWST (Map PC (Instr PC)) [Cell] (Map Addr Cell) (ExceptT String IO)
+data Stats = Stats
+  { stOutput :: [Cell]
+  , stSpace :: Integer
+  , stTime  :: Integer
+  }
+  deriving (Eq, Ord, Show)
+
+instance Semigroup Stats where
+  x <> y = Stats
+    { stOutput = stOutput x ++ stOutput y
+    , stSpace  = stSpace x `max` stSpace y
+    , stTime   = stTime x + stTime y
+    }
+
+instance Monoid Stats where
+  mempty = Stats
+    { stOutput = []
+    , stSpace  = 4   -- 4 registers at the beginning of memory
+    , stTime   = 0
+    }
+
+type Exec = RWST (Map PC (Instr PC)) Stats (Map Addr Cell) (ExceptT String IO)
 
 eval :: XExpr -> Exec Cell
 eval (XStr s) = pure $ Str s
@@ -93,7 +114,7 @@ throw msg = do
     _ -> lift $ throwE msg
 
 emit :: Cell -> Exec ()
-emit cell = tell [cell]
+emit cell = tell mempty{ stOutput = [cell] }
 
 push :: Cell -> Exec ()
 push cell = do
@@ -182,7 +203,7 @@ loop = do
         Int pc -> jump (PC pc)
         cell -> throw $ "bad return address: " ++ show cell
 
-run :: Code PC -> IO (Either String [Cell])
+run :: Code PC -> IO (Either String Stats)
 run code =
   fmap (fmap snd) $
     runExceptT $
