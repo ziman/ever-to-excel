@@ -1,4 +1,2 @@
-(define (id x) x)
-
 (define (main)
-  (display (id 42)))
+  (display (+ 1 2)))
