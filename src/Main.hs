@@ -26,13 +26,15 @@ main' fnameIn fnameOut debug = do
   case pipeline input of
     Left err -> error err
     Right code -> do
-      for_ (zip [0..] code) $ \(pc, instr) -> do
-        putStrLn $ show (pc :: Int) ++ ": " ++ show instr
+      when debug $
+        for_ (zip [0..] code) $ \(pc, instr) -> do
+          putStrLn $ show (pc :: Int) ++ ": " ++ show instr
 
       run debug code >>= \case
         Left err -> error err
         Right stats -> do
-          print stats
+          when debug $
+            print stats
 
           let icode = toICode code
           writeFile fnameOut $ unlines $
