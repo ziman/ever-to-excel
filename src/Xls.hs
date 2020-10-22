@@ -1,5 +1,6 @@
 module Xls where
 
+import Data.List (intercalate)
 import Bytecode
 
 data XE
@@ -161,3 +162,19 @@ halve code =
   case splitAt (length code `div` 2) code of
     (xs, ys@((pc,_):_)) -> (pc, xs, ys)
     _ -> error $ "halve: bad input: " ++ show code
+
+toExcel :: Int -> XE -> String
+toExcel row = \case
+  XEInt i -> show i
+  XEStr s -> show s
+  XEAddr (Addr i) -> show i
+  XERef e -> toExcel row $
+    XEFun "INDIRECT" [XEFun "ADDRESS" [XEInt row, e]]
+  XEOp op x y ->
+    "(" ++ toExcel row x ++ ")"
+    ++ op
+    ++ "(" ++ toExcel row y ++ ")"
+  XEFun f args ->
+    f ++ "("
+    ++ intercalate ";" (map (toExcel row) args)
+    ++ ")"
