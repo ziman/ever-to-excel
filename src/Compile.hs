@@ -6,6 +6,7 @@ import Data.Foldable
 import Data.Map (Map)
 import qualified Data.Map as Map
 
+import Control.Monad (when)
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Except
 import Control.Monad.Trans.RWS.CPS
@@ -100,14 +101,36 @@ compileExpr pos (Form f args) =
       -> throw $ show f ++ " requires " ++ show arity ++ " arguments, "
           ++ show (length args) ++ " given"
 
-      | Tail _origArity <- pos
+      | Tail origArity <- pos
       -> do
         -- if we're in the tail position, we must have an empty local stack, too
-        let baseOfs = 1 + length args
+
+        -- resize the activation record
+        when (arity /= origArity) $ do
+          -- move stored PC
+          emit $ LLOAD 0
+          emit $ LSTORE (origArity - arity)
+
+          -- move stored BP
+          emit $ LLOAD 1
+          emit $ LSTORE (origArity - arity - 1)
+
+          -- increment BP
+          emit $ LOAD addrBP 0
+          emit $ OP 0 (XInt $ arity - origArity)
+          emit $ STORE addrBP 0
+
+          -- set SP to BP
+          emit $ LOAD addrBP 0
+          emit $ STORE addrSP 0
+
+        -- overwrite the args
         for_ (zip [0..] args) $ \(i, arg) -> do
           compileExpr NonTail arg
-          emit $ LSTORE (baseOfs - i)
-        emit $ JMP f  -- tail call!
+          emit $ LSTORE (1 + arity - i)
+
+        -- tail call!
+        emit $ JMP f
 
       | otherwise -> do
         emit $ OP 0 (XStr "ret")  -- return value
