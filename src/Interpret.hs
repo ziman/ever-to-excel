@@ -133,11 +133,11 @@ loop = do
       adjustSP (-n)
       push cell
       next
-    LOAD (Addr addr) ofs -> do
-      push =<< peek (Addr $ addr+ofs)
+    LOAD addr -> do
+      push =<< peek addr
       next
-    STORE (Addr addr) ofs -> do
-      poke (Addr $ addr+ofs) =<< pop
+    STORE addr -> do
+      poke addr =<< pop
       next
     LLOAD ofs -> do
       Addr bp <- getBP

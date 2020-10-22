@@ -18,8 +18,8 @@ data XExpr
 type Ofs = Int
 
 data Instr lbl
-  = LOAD Addr Ofs
-  | STORE Addr Ofs  -- also pops
+  = LOAD Addr
+  | STORE Addr  -- also pops
   | LSTORE Ofs
   | LLOAD Ofs
   | OP Int XExpr    -- evaluate expr, pop N values, push result

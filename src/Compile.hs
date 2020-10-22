@@ -116,13 +116,13 @@ compileExpr pos (Form f args) =
           emit $ LSTORE (origArity - arity - 1)
 
           -- increment BP
-          emit $ LOAD addrBP 0
+          emit $ LOAD addrBP
           emit $ OP 0 (XInt $ arity - origArity)
-          emit $ STORE addrBP 0
+          emit $ STORE addrBP
 
           -- set SP to BP
-          emit $ LOAD addrBP 0
-          emit $ STORE addrSP 0
+          emit $ LOAD addrBP
+          emit $ STORE addrSP
 
         -- overwrite the args
         for_ (zip [0..] args) $ \(i, arg) -> do
@@ -138,12 +138,12 @@ compileExpr pos (Form f args) =
 
         -- push activation record
         retLabel <- freshLabel -- a new label
-        emit $ LOAD addrBP 0  -- save BP
+        emit $ LOAD addrBP  -- save BP
         emit $ PUSHL retLabel  -- save PC
 
         -- set the base pointer to the stack pointer
-        emit $ LOAD  addrSP 0
-        emit $ STORE addrBP 0
+        emit $ LOAD  addrSP
+        emit $ STORE addrBP
 
         emit $ JMP f
         -- now the called function takes over
@@ -151,7 +151,7 @@ compileExpr pos (Form f args) =
         emit $ LABEL retLabel
 
         -- restore the base pointer
-        emit $ STORE addrBP 0
+        emit $ STORE addrBP
         emit $ POP (length args)
 
         -- leave the return value on the stack
@@ -200,8 +200,8 @@ resolve code = traverse go code
   where
     go :: Instr a -> Either String (Instr PC)
     go = \case
-      LOAD addr ofs -> pure $ LOAD addr ofs
-      STORE addr ofs -> pure $ STORE addr ofs
+      LOAD addr -> pure $ LOAD addr
+      STORE addr -> pure $ STORE addr
       LLOAD ofs -> pure $ LLOAD ofs
       LSTORE ofs -> pure $ LSTORE ofs
       OP n xe -> pure $ OP n xe
